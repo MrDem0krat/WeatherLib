@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using MySql.Data.MySqlClient;
-//using NLog;
+using NLog;
 
 namespace WeatherLib
 {
@@ -20,7 +20,7 @@ namespace WeatherLib
         private static string _DataBaseUser = "admin";
         private static string _DataBasePassword = "12345";
         private static string _DataBaseTable = "history";
-        //private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static Logger logger = LogManager.GetCurrentClassLogger();
         private static string FilePath = "content/xml/weather.xml";
 
         private DateTime _Date;
@@ -101,24 +101,6 @@ namespace WeatherLib
             Pressure = 0;
         }
 
-        //перенести в класс обслуживающий базу
-        public static void setBaseServer(string _Server)
-        {
-            _DataBaseServer = _Server;
-        }
-        public static void setBaseName(string _BaseName)
-        {
-            _DataBaseName = _BaseName;
-        }
-        public static void setBaseUser(string _BaseUser)
-        {
-            _DataBaseUser = _BaseUser;
-        }
-        public static void setBasePassword(string _BasePassword)
-        {
-            _DataBasePassword = _BasePassword;
-        }
-        
         //Чтение погоды в _src день в _part время суток
         public static Weather ReadPart (XElement _src, XNamespace _ns, int _part) 
         {
@@ -218,6 +200,7 @@ namespace WeatherLib
             return weather;
         }
 
+        //Добавить фунцию проверки подключения к интернету
         // Загрузка XML файла с погодой с сайта
         public static bool LoadWeather (string _cityID)
         {
@@ -226,6 +209,7 @@ namespace WeatherLib
             result.Load(weather_address);
             isAllDirectoryExists();
             result.Save(FilePath);
+            logger.Trace(String.Format("Файл прогноза погоды успешно загружен."));
             return true;
         }
       
@@ -236,8 +220,6 @@ namespace WeatherLib
             return weather.Root.Attribute("city").Value;
         }
 
-        //добавить функцию записи погоды в базу данных
-        
         private static void isAllDirectoryExists() 
         {
             if (!File.Exists(FilePath))
@@ -258,7 +240,23 @@ namespace WeatherLib
             
         }
 
-        
+        //перенести в класс обслуживающий базу
+        public static void setBaseServer(string _Server)
+        {
+            _DataBaseServer = _Server;
+        }
+        public static void setBaseName(string _BaseName)
+        {
+            _DataBaseName = _BaseName;
+        }
+        public static void setBaseUser(string _BaseUser)
+        {
+            _DataBaseUser = _BaseUser;
+        }
+        public static void setBasePassword(string _BasePassword)
+        {
+            _DataBasePassword = _BasePassword;
+        }
         
     }
 }
