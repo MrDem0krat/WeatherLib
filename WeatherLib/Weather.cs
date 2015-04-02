@@ -7,13 +7,22 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
+using MySql.Data.MySqlClient;
+//using NLog;
 
 namespace WeatherLib
 {
-    public class Weather
+    public partial class Weather
     {
         #region Поля данных
+        private static string _DataBaseServer = "localhost";
+        private static string _DataBaseName = "weather";
+        private static string _DataBaseUser = "admin";
+        private static string _DataBasePassword = "12345";
+        private static string _DataBaseTable = "history";
+        //private static Logger logger = LogManager.GetCurrentClassLogger();
         private static string FilePath = "content/xml/weather.xml";
+
         private DateTime _Date;
         private string _PartOfDay;
         private int _Temperature;
@@ -77,6 +86,7 @@ namespace WeatherLib
             set { _Pressure = value; }
         }
         #endregion
+        
         public Weather()
         {
             Date = new DateTime();
@@ -91,7 +101,25 @@ namespace WeatherLib
             Pressure = 0;
         }
 
-         //Чтение погоды в _src день в _part время суток
+        //перенести в класс обслуживающий базу
+        public static void setBaseServer(string _Server)
+        {
+            _DataBaseServer = _Server;
+        }
+        public static void setBaseName(string _BaseName)
+        {
+            _DataBaseName = _BaseName;
+        }
+        public static void setBaseUser(string _BaseUser)
+        {
+            _DataBaseUser = _BaseUser;
+        }
+        public static void setBasePassword(string _BasePassword)
+        {
+            _DataBasePassword = _BasePassword;
+        }
+        
+        //Чтение погоды в _src день в _part время суток
         public static Weather ReadPart (XElement _src, XNamespace _ns, int _part) 
         {
             CultureInfo culture;
@@ -151,15 +179,24 @@ namespace WeatherLib
             Weather weather = new Weather();
             CultureInfo culture;
             DateTimeStyles style;
-            DateTime date;
             string str;
             
             culture = CultureInfo.CreateSpecificCulture("fr-FR");
             style = DateTimeStyles.None;
 
-            DateTime.TryParse(fact.Element(ns + "uptime").Value, culture, style, out date);
-            weather.Date = date;
-            weather.PartOfDay = fact.Element(ns + "daytime").Value;
+            weather.Date = DateTime.Parse(fact.Element(ns + "uptime").Value, culture, style);
+
+            if (DateTime.Now.Hour >= 6)
+                if (DateTime.Now.Hour >= 12)
+                    if (DateTime.Now.Hour >= 18)
+                        weather.PartOfDay = "evening";
+                    else
+                        weather.PartOfDay = "day";
+                else
+                    weather.PartOfDay = "morning";
+            else
+                weather.PartOfDay = "night";
+
             if (fact.Elements(ns + "temperature") != null)
                 weather.Temperature = int.Parse(fact.Element(ns + "temperature").Value);
             else
@@ -191,7 +228,7 @@ namespace WeatherLib
             result.Save(FilePath);
             return true;
         }
-
+      
         // Получение названия города
         public static string CityName ()
         {
@@ -199,6 +236,8 @@ namespace WeatherLib
             return weather.Root.Attribute("city").Value;
         }
 
+        //добавить функцию записи погоды в базу данных
+        
         private static void isAllDirectoryExists() 
         {
             if (!File.Exists(FilePath))
@@ -216,6 +255,10 @@ namespace WeatherLib
             //    conf.Close();
             //}
             //return true;
+            
         }
+
+        
+        
     }
 }
