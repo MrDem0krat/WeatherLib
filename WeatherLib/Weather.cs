@@ -9,82 +9,131 @@ using System.Xml;
 using System.Xml.Linq;
 using MySql.Data.MySqlClient;
 using NLog;
+using System.Net;
+using System.Security;
 
 namespace WeatherLib
 {
     public partial class Weather
     {
         #region Поля данных
-        private static string _DataBaseServer = "localhost";
-        private static string _DataBaseName = "weather";
-        private static string _DataBaseUser = "admin";
-        private static string _DataBasePassword = "12345";
-        private static string _DataBaseTable = "history";
-        private static Logger logger = LogManager.GetCurrentClassLogger();
-        private static string FilePath = "content/xml/weather.xml";
-
-        private DateTime _Date;
-        private string _PartOfDay;
-        private int _Temperature;
-        private string _Condition;
-        private string _Type;
-        private string _TypeShort;
-        private string _WindDirection;
-        private string _WindSpeed;
-        private int _Humidity;
-        private int _Pressure;
+        private static Logger logger = LogManager.GetCurrentClassLogger(); 
         #endregion
         #region Свойства
-        public DateTime Date
+        public DateTime Date { get; set; }
+        public string PartOfDay { get; set; }
+        public int Temperature { get; set; }
+        public string Condition { get; set; }
+        public string Type { get; set; }
+        public string TypeShort { get; set; }
+        public string WindDirection { get; set; }
+        public string WindSpeed { get; set; }
+        public int Humidity { get; set; }
+        public int Pressure { get; set; }
+
+        public static string CityName 
         {
-            get { return _Date; }
-            set { _Date = value; }
+            get { return WeatherLib.Properties.Settings.Default.CityName; }
+            set { WeatherLib.Properties.Settings.Default.CityName = value; } 
         }
-        public string PartOfDay
+        public static string CityNameEng 
         {
-            get { return _PartOfDay; }
-            set { _PartOfDay = value; }
+            get{ return WeatherLib.Properties.Settings.Default.CityNameEng; }
+            set{ WeatherLib.Properties.Settings.Default.CityNameEng = value; }
         }
-        public int Temperature 
+        public static string CityID 
         {
-            get { return _Temperature; }
-            set { _Temperature = value; } 
+            get { return WeatherLib.Properties.Settings.Default.CityID; }
+            set { WeatherLib.Properties.Settings.Default.CityID = value; } 
         }
-        public string Condition 
+
+        public struct DayPart
         {
-            get { return _Condition; }
-            set { _Condition = value; } 
-        }
-        public string Type 
+            public static string Morning
+            {
+                get { return "morning"; }
+            }
+            public static string Day
+            {
+                get { return "day"; }
+            }
+            public static string Evening
+            {
+                get { return "evening"; }
+            }
+            public static string Night
+            {
+                get { return "night"; }
+            }
+            
+            public static int IndexOf(string obj)
+            {
+                switch (obj)
+                {
+                    default:
+                        return -1;
+                    case "morning":
+                        return 0;
+                    case "day":
+                        return 1;
+                    case "evening":
+                        return 2;
+                    case "night":
+                        return 3;
+                }
+            }
+            public static string ValueOf(int index)
+            {
+                switch (index)
+                {
+                    default:
+                        return null;
+                    case 0:
+                        return "morning";
+                    case 1:
+                        return "day";
+                    case 2:
+                        return "evening";
+                    case 3:
+                        return "night";
+                }
+            }
+        };
+        public struct DayPartRus
         {
-            get { return _Type; }
-            set { _Type = value; }
-        }
-        public string TypeShort 
-        {
-            get { return _TypeShort; }
-            set { _TypeShort = value; } 
-        }
-        public string WindDirection 
-        {
-            get { return _WindDirection; }
-            set { _WindDirection = value; } 
-        }
-        public string WindSpeed 
-        {
-            get { return _WindSpeed; }
-            set { _WindSpeed = value; }
-        }
-        public int Humidity 
-        {
-            get { return _Humidity; }
-            set { _Humidity = value; }
-        }
-        public int Pressure 
-        {
-            get { return _Pressure; }
-            set { _Pressure = value; }
-        }
+            public static string Morning
+            {
+                get { return "Утро"; }
+            }
+            public static string Day
+            {
+                get { return "День"; }
+            }
+            public static string Evening
+            {
+                get { return "Вечер"; }
+            }
+            public static string Night
+            {
+                get { return "Ночь"; }
+            }
+            public static string Convert(string part)
+            {
+                switch (part)
+	            {
+		            default:
+                        return null;
+                    case "morning":
+                        return "Утро";
+                    case "day":
+                        return "День";
+                    case "evening":
+                        return "Вечер";
+                    case "night":
+                        return "Ночь";
+	            }
+            }
+        };
         #endregion
         
         public Weather()
@@ -101,20 +150,37 @@ namespace WeatherLib
             Pressure = 0;
         }
 
-        //Чтение погоды в _src день в _part время суток
+        public static string ReadCityNameEng()
+        {
+            XDocument forecast = XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath);
+            if (forecast.Root.Attribute("slug").Value != null)
+                return forecast.Root.Attribute("slug").Value;
+            else
+                return "";
+        }
+        public async static Task<string> ReadCityNameEngAsync()
+        {
+            XDocument forecast = await Task<XDocument>.Factory.StartNew(() => 
+            {
+                return XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath);
+            });
+            if(forecast.Root.Attribute("slug").Value != null)
+                return forecast.Root.Attribute("slug").Value;
+            else
+                return "";
+        }
+        //Чтение из файла погоды в _src день в _part время суток
         public static Weather ReadPart (XElement _src, XNamespace _ns, int _part) 
         {
             CultureInfo culture;
             DateTimeStyles style;
-            DateTime date;
             Weather weather = new Weather();
             string str;
 
             culture = CultureInfo.CreateSpecificCulture("fr-FR");
             style = DateTimeStyles.None;
             
-            DateTime.TryParse(_src.Attribute("date").Value, culture, style, out date);
-            weather.Date = date;
+            weather.Date = DateTime.Parse(_src.Attribute("date").Value, culture, style);
             weather.PartOfDay = _src.Elements(_ns + "day_part").ElementAt(_part).Attribute("type").Value;
             if (_src.Elements(_ns + "day_part").ElementAt(_part).Element(_ns + "temperature") != null)
                 weather.Temperature = int.Parse(_src.Elements(_ns + "day_part").ElementAt(_part).Element(_ns + "temperature").Value);
@@ -139,9 +205,14 @@ namespace WeatherLib
          //Чтение всей погоды из файла
         public static List<Weather> ReadAll ()
         {
-            XDocument weather = XDocument.Load(FilePath);
+            XDocument weather = XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath);
             XNamespace ns = weather.Root.Name.Namespace;
             List<Weather> forecast = new List<Weather>();
+            CityNameEng = ReadCityNameEng();
+            if (weather.Root.Attribute("slug").Value != WeatherLib.Properties.Settings.Default.CityNameEng)
+            {
+                WeatherLib.Properties.Settings.Default.CityNameEng = weather.Root.Attribute("slug").Value;
+            }
             foreach(XElement element in weather.Root.Elements(ns + "day"))
             {
                 for(int part = 0; part < 4; part++)
@@ -151,11 +222,27 @@ namespace WeatherLib
             }
             return forecast;
         }
+        public async static Task<List<Weather>> ReadAllAsync()
+        {
+            XDocument forecast = await Task<XDocument>.Factory.StartNew(() => { return XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath); });
+            XNamespace ns = forecast.Root.Name.Namespace;
+            List<Weather> weather = new List<Weather>();
+            CityNameEng = await ReadCityNameEngAsync();
+            await Task.Factory.StartNew(() =>
+                {
+                    foreach (XElement element in forecast.Root.Elements(ns + "day"))
+                    {
+                        for (int part = 0; part < 4; part++)
+                            weather.Add(ReadPart(element, ns, part));
+                    }
+                });
+            return weather;
+        }
 
         //Чтение текущей погоды
         public static Weather Now () 
         {
-            XDocument forecast = XDocument.Load(FilePath);
+            XDocument forecast = XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath);
             XNamespace ns = forecast.Root.Name.Namespace;
             XElement fact = forecast.Root.Element(ns + "fact");
             Weather weather = new Weather();
@@ -167,17 +254,16 @@ namespace WeatherLib
             style = DateTimeStyles.None;
 
             weather.Date = DateTime.Parse(fact.Element(ns + "uptime").Value, culture, style);
-
             if (DateTime.Now.Hour >= 6)
                 if (DateTime.Now.Hour >= 12)
                     if (DateTime.Now.Hour >= 18)
-                        weather.PartOfDay = "evening";
+                        weather.PartOfDay = Weather.DayPart.Evening;
                     else
-                        weather.PartOfDay = "day";
+                        weather.PartOfDay = Weather.DayPart.Day;
                 else
-                    weather.PartOfDay = "morning";
+                    weather.PartOfDay = Weather.DayPart.Morning;
             else
-                weather.PartOfDay = "night";
+                weather.PartOfDay = Weather.DayPart.Night;
 
             if (fact.Elements(ns + "temperature") != null)
                 weather.Temperature = int.Parse(fact.Element(ns + "temperature").Value);
@@ -199,64 +285,179 @@ namespace WeatherLib
 
             return weather;
         }
-
-        //Добавить фунцию проверки подключения к интернету
-        // Загрузка XML файла с погодой с сайта
-        public static bool LoadWeather (string _cityID)
+        public async static Task<Weather> NowAsync()
         {
-            string weather_address = "http://export.yandex.ru/weather-ng/forecasts/" + _cityID + ".xml";
+            XDocument forecast = await Task<XDocument>.Factory.StartNew(() => 
+            { 
+                return XDocument.Load(WeatherLib.Properties.Settings.Default.FilePath); 
+            });
+            XNamespace ns = forecast.Root.Name.Namespace;
+            XElement now = forecast.Root.Element(ns + "fact");
+            Weather weather = new Weather();
+            CultureInfo culture;
+            DateTimeStyles style;
+            string str;
+            culture = CultureInfo.CreateSpecificCulture("fr-FR");
+            style = DateTimeStyles.None;
+            await Task.Factory.StartNew(() =>
+                {
+                    weather.Date = DateTime.Parse(now.Element(ns + "uptime").Value, culture, style);
+                    if (DateTime.Now.Hour >= 6)
+                        if (DateTime.Now.Hour >= 12)
+                            if (DateTime.Now.Hour >= 18)
+                                weather.PartOfDay = Weather.DayPart.Evening;
+                            else
+                                weather.PartOfDay = Weather.DayPart.Day;
+                        else
+                            weather.PartOfDay = Weather.DayPart.Morning;
+                    else
+                        weather.PartOfDay = Weather.DayPart.Night;
+
+                    if (now.Elements(ns + "temperature") != null)
+                        weather.Temperature = int.Parse(now.Element(ns + "temperature").Value);
+                    else
+                    {
+                        int temp = int.Parse(now.Element(ns + "temperature_to").Value) +
+                            int.Parse(now.Element(ns + "temperature_from").Value);
+                        weather.Temperature = temp / 2;
+                    }
+                    weather.Condition = now.Element(ns + "image-v3").Value;
+                    str = now.Element(ns + "weather_type").Value;
+                    weather.Type = str[0].ToString().ToUpper() + str.Substring(1);
+                    str = now.Element(ns + "weather_type_short").Value;
+                    weather.TypeShort = str[0].ToString().ToUpper() + str.Substring(1);
+                    weather.WindDirection = now.Element(ns + "wind_direction").Value;
+                    weather.WindSpeed = now.Element(ns + "wind_speed").Value;
+                    weather.Humidity = int.Parse(now.Element(ns + "humidity").Value);
+                    weather.Pressure = int.Parse(now.Element(ns + "pressure").Value);
+                });
+            return weather;
+        }
+
+        //Функция проверки подключения к интернету
+        public static bool CheckInternet()
+        {
+            WebClient client = new WebClient();
+            string response;
+            try
+            {
+                response = client.DownloadString("http://www.ya.ru");
+                logger.Debug("Проверка доступа в интернет прошла успешно");
+                return true;
+            }
+            catch(WebException ex)
+            {
+                logger.Info(String.Format("Отсутствует подключение к сети Интернет. {0}", ex.Message));
+                return false;
+            }
+        }
+
+        // Загрузка XML файла с погодой с сайта
+        public static bool Load ()
+        {
+            string weather_address = WeatherLib.Properties.Settings.Default.WebPath + CityID + ".xml";
             XmlDocument result = new XmlDocument();
-            result.Load(weather_address);
-            isAllDirectoryExists();
-            result.Save(FilePath);
-            logger.Trace(String.Format("Файл прогноза погоды успешно загружен."));
-            return true;
+            if (Weather.CheckInternet())
+            {
+                result.Load(weather_address);
+                isAllDirectoryExists(); 
+                result.Save(WeatherLib.Properties.Settings.Default.FilePath);
+                logger.Trace(String.Format("Файл прогноза погоды успешно загружен."));
+                return true;
+            }
+            else
+            {
+                logger.Trace("Прогноз погоды не загружен.");
+                return false;
+            }
+        }
+        public async static Task<bool> LoadAsync()
+        {
+            string WeatherAddress = WeatherLib.Properties.Settings.Default.WebPath + CityID + ".xml";
+            XmlDocument result = new XmlDocument();
+            bool IsInternetOk = await Task<bool>.Factory.StartNew(() => Weather.CheckInternet());
+            if (IsInternetOk == true)
+            {
+                await Task.Factory.StartNew(() =>
+                    {
+                        result.Load(WeatherAddress);
+                        isAllDirectoryExists();
+                        result.Save(WeatherLib.Properties.Settings.Default.FilePath);
+                    });
+                logger.Trace("Прогноз погоды успешно загружен");
+                return true;
+            }
+            else
+            {
+                logger.Trace("При загрузке прогноза погоды произошла ошибка. Прогноз не загружен.");
+                return false;
+            }
         }
       
-        // Получение названия города
-        public static string CityName ()
+        // Локализация названия дня недели
+        public static string DayOfWeekRus(DateTime date)
         {
-            XDocument weather = XDocument.Load(FilePath);
-            return weather.Root.Attribute("city").Value;
+            switch(date.DayOfWeek)
+            {
+                default:
+                    return "";
+                case DayOfWeek.Monday:
+                    return "Понедельник";
+                case DayOfWeek.Tuesday:
+                    return "Вторник";
+                case DayOfWeek.Wednesday:
+                    return "Среда";
+                case DayOfWeek.Thursday:
+                    return "Четверг";
+                case DayOfWeek.Friday:
+                    return "Пятница";
+                case DayOfWeek.Saturday:
+                    return "Суббота";
+                case DayOfWeek.Sunday:
+                    return "Воскресенье";
+            }
         }
-
+        // Локализация вывода направления ветра
+        public static string WindDirectionRus(string src)
+        {
+            switch (src)
+            {
+                case "n":
+                    return "↓С";
+                case "ne":
+                    return "↙СВ";
+                case "e":
+                    return "←В";
+                case "se":
+                    return "↖ЮВ";
+                case "s":
+                    return "↑Ю";
+                case "sw":
+                    return "↗ЮЗ";
+                case "w":
+                    return "→З";
+                case "nw":
+                    return "↘СЗ";
+                default:
+                    return "";
+            }
+        }
         private static void isAllDirectoryExists() 
         {
-            if (!File.Exists(FilePath))
+            if (!File.Exists(WeatherLib.Properties.Settings.Default.FilePath))
             {
                 if (!Directory.Exists("content"))
                     Directory.CreateDirectory("content");
                 if (!Directory.Exists("content/xml"))
                     Directory.CreateDirectory("content/xml");
             }
-            //if (!File.Exists("config/config.ini"))
-            //{
-            //    if (!Directory.Exists("config"))
-            //        Directory.CreateDirectory("config");
-            //    StreamWriter conf = File.CreateText("config/config.ini");
-            //    conf.Close();
-            //}
-            //return true;
-            
+        }
+        // Сохранение настроек
+        public static void SaveAuthData()
+        {
+            WeatherLib.Properties.Settings.Default.Save();
+            logger.Debug("Настройки успешно сохранены");
         }
 
-        //перенести в класс обслуживающий базу
-        public static void setBaseServer(string _Server)
-        {
-            _DataBaseServer = _Server;
-        }
-        public static void setBaseName(string _BaseName)
-        {
-            _DataBaseName = _BaseName;
-        }
-        public static void setBaseUser(string _BaseUser)
-        {
-            _DataBaseUser = _BaseUser;
-        }
-        public static void setBasePassword(string _BasePassword)
-        {
-            _DataBasePassword = _BasePassword;
-        }
-        
     }
 }

@@ -1,0 +1,36 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="WeatherLib.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="FilePath" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">content/xml/weather.xml</Value>
+    </Setting>
+    <Setting Name="WebPath" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">http://export.yandex.ru/weather-ng/forecasts/</Value>
+    </Setting>
+    <Setting Name="PassWord" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="UserID" Type="System.String" Scope="User">
+      <Value Profile="(Default)">root</Value>
+    </Setting>
+    <Setting Name="Server" Type="System.String" Scope="User">
+      <Value Profile="(Default)">localhost</Value>
+    </Setting>
+    <Setting Name="Port" Type="System.UInt32" Scope="User">
+      <Value Profile="(Default)">3306</Value>
+    </Setting>
+    <Setting Name="CityName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Брянск</Value>
+    </Setting>
+    <Setting Name="CityID" Type="System.String" Scope="User">
+      <Value Profile="(Default)">26898</Value>
+    </Setting>
+    <Setting Name="AdditionalEntropy" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0KHQsNC90Y8sINGN0YLQviDQt9Cw0YnQuNGC0LAsINC00LA=</Value>
+    </Setting>
+    <Setting Name="CityNameEng" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Bryansk</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
